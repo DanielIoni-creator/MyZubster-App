@@ -1,38 +1,60 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import api from '../services/api';
 import * as Clipboard from 'expo-clipboard';
 
 export default function OrderScreen({ route, navigation }) {
   const { token } = useContext(AuthContext);
+  const { t } = useLanguage();
   const { orderId } = route.params;
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => { fetchOrder(); }, [orderId]);
+  useEffect(() => {
+    fetchOrder();
+  }, [orderId]);
 
   const fetchOrder = async () => {
     try {
-      const response = await api.get(`/orders/${orderId}/payment-status`, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await api.get(`/orders/${orderId}/payment-status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setOrder(response.data);
-    } catch (error) { console.error('Errore recupero ordine:', error);
-    } finally { setLoading(false); setRefreshing(false); }
+    } catch (error) {
+      console.error('Errore recupero ordine:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const onRefresh = () => { setRefreshing(true); fetchOrder(); };
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchOrder();
+  };
 
   const copyToClipboard = async (text) => {
     await Clipboard.setStringAsync(text);
-    Alert.alert('✅ Copiato!', 'Indirizzo Monero copiato negli appunti.');
+    Alert.alert('✅ ' + t('order.copied'), t('order.copiedMessage'));
+  };
+
+  const getStatusText = (status) => {
+    const statusMap = {
+      'pending': t('dashboard.status.pending'),
+      'completed': t('dashboard.status.completed'),
+      'cancelled': t('dashboard.status.cancelled'),
+    };
+    return statusMap[status] || status.toUpperCase();
   };
 
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#4CAF50" />
-        <Text style={{ marginTop: 10 }}>⏳ Caricamento...</Text>
+        <Text style={{ marginTop: 10 }}>{t('common.loading')}</Text>
       </View>
     );
   }
@@ -40,9 +62,9 @@ export default function OrderScreen({ route, navigation }) {
   if (!order) {
     return (
       <View style={styles.center}>
-        <Text>❌ Ordine non trovato.</Text>
+        <Text>❌ {t('order.notFound')}</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>⬅ Torna alla Dashboard</Text>
+          <Text style={styles.backButtonText}>{t('order.back')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -54,58 +76,70 @@ export default function OrderScreen({ route, navigation }) {
   return (
     <ScrollView style={styles.container} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
       <View style={styles.card}>
-        <Text style={styles.id}>📋 Ordine #{order.id}</Text>
+        <Text style={styles.id}>{t('order.title', { id: order.id })}</Text>
         <View style={[styles.statusBadge, isCompleted ? styles.completed : styles.pending]}>
-          <Text style={styles.statusText}>{order.status?.toUpperCase() || 'PENDING'}</Text>
+          <Text style={styles.statusText}>{getStatusText(order.status)}</Text>
         </View>
       </View>
+
       <View style={styles.card}>
-        <Text style={styles.label}>💰 Importo</Text>
+        <Text style={styles.label}>{t('order.amount')}</Text>
         <Text style={styles.value}>{order.amount} {order.currency}</Text>
+
         {order.moneroAmount && (
           <>
-            <Text style={styles.label}>💎 Importo in XMR</Text>
+            <Text style={styles.label}>{t('order.amountXMR')}</Text>
             <Text style={styles.value}>{order.moneroAmount.toFixed(8)} XMR</Text>
           </>
         )}
+
         {order.moneroAddress && (
           <>
-            <Text style={styles.label}>📬 Indirizzo Monero</Text>
+            <Text style={styles.label}>{t('order.moneroAddress')}</Text>
             <TouchableOpacity onPress={() => copyToClipboard(order.moneroAddress)}>
-              <Text style={styles.address} numberOfLines={3}>{order.moneroAddress}</Text>
-              <Text style={styles.copyText}>📋 Tocca per copiare</Text>
+              <Text style={styles.address} numberOfLines={3}>
+                {order.moneroAddress}
+              </Text>
+              <Text style={styles.copyText}>{t('order.copyAddress')}</Text>
             </TouchableOpacity>
           </>
         )}
+
         {order.confirmations > 0 && (
           <>
-            <Text style={styles.label}>✔️ Conferme</Text>
+            <Text style={styles.label}>{t('order.confirmations')}</Text>
             <Text style={styles.value}>{order.confirmations}</Text>
           </>
         )}
+
         {order.amountReceived > 0 && (
           <>
-            <Text style={styles.label}>📥 Ricevuto</Text>
+            <Text style={styles.label}>{t('order.received')}</Text>
             <Text style={styles.value}>{order.amountReceived.toFixed(8)} XMR</Text>
           </>
         )}
       </View>
+
       {isPending && (
         <View style={styles.card}>
-          <Text style={styles.warning}>⏳ In attesa del pagamento</Text>
-          <Text style={styles.hint}>Invia esattamente {order.moneroAmount?.toFixed(8)} XMR all'indirizzo sopra.</Text>
+          <Text style={styles.warning}>{t('order.waitingPayment')}</Text>
+          <Text style={styles.hint}>
+            {t('order.paymentHint', { amount: order.moneroAmount?.toFixed(8) })}
+          </Text>
           <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
-            <Text style={styles.refreshText}>🔄 Aggiorna stato</Text>
+            <Text style={styles.refreshText}>{t('order.refresh')}</Text>
           </TouchableOpacity>
         </View>
       )}
+
       {isCompleted && (
         <View style={[styles.card, styles.successCard]}>
-          <Text style={styles.successText}>✅ Pagamento confermato!</Text>
+          <Text style={styles.successText}>{t('order.paymentConfirmed')}</Text>
         </View>
       )}
+
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-        <Text style={styles.backButtonText}>⬅ Torna alla Dashboard</Text>
+        <Text style={styles.backButtonText}>{t('order.back')}</Text>
       </TouchableOpacity>
     </ScrollView>
   );

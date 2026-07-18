@@ -1,10 +1,12 @@
 import React, { useState, useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import api from '../services/api';
 
 export default function CreateOrderScreen({ navigation }) {
   const { token } = useContext(AuthContext);
+  const { t } = useLanguage();
   const [skillId, setSkillId] = useState('');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('USD');
@@ -12,9 +14,10 @@ export default function CreateOrderScreen({ navigation }) {
 
   const handleCreateOrder = async () => {
     if (!skillId || !amount) {
-      Alert.alert('❌ Errore', 'Compila tutti i campi obbligatori.');
+      Alert.alert('❌ ' + t('createOrder.error'), t('createOrder.errorMessage'));
       return;
     }
+
     setLoading(true);
     try {
       const response = await api.post('/orders', {
@@ -22,28 +25,65 @@ export default function CreateOrderScreen({ navigation }) {
         amount: parseFloat(amount),
         currency,
         customerEmail: 'user@example.com'
-      }, { headers: { Authorization: `Bearer ${token}` } });
-      Alert.alert('✅ Successo', 'Ordine creato con successo!');
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      Alert.alert('✅ ' + t('common.success'), t('createOrder.successMessage'));
       navigation.navigate('Order', { orderId: response.data.id });
     } catch (error) {
-      Alert.alert('❌ Errore', error.response?.data?.error || 'Impossibile creare l\'ordine. Riprova.');
-    } finally { setLoading(false); }
+      console.error('Errore creazione ordine:', error);
+      Alert.alert('❌ ' + t('createOrder.error'), error.response?.data?.error || t('createOrder.errorMessage'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>📦 Nuovo Ordine</Text>
-      <Text style={styles.label}>ID Competenza *</Text>
-      <TextInput style={styles.input} placeholder="Inserisci l'ID della competenza" value={skillId} onChangeText={setSkillId} keyboardType="numeric" />
-      <Text style={styles.label}>Importo *</Text>
-      <TextInput style={styles.input} placeholder="Importo (es. 50)" value={amount} onChangeText={setAmount} keyboardType="numeric" />
-      <Text style={styles.label}>Valuta</Text>
-      <TextInput style={styles.input} placeholder="USD, EUR, ecc." value={currency} onChangeText={setCurrency} autoCapitalize="characters" />
-      <TouchableOpacity style={[styles.submitButton, loading && styles.disabled]} onPress={handleCreateOrder} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>✅ Crea Ordine</Text>}
+      <Text style={styles.title}>{t('createOrder.title')}</Text>
+
+      <Text style={styles.label}>{t('createOrder.skillId')}</Text>
+      <TextInput
+        style={styles.input}
+        placeholder={t('createOrder.skillIdPlaceholder')}
+        value={skillId}
+        onChangeText={setSkillId}
+        keyboardType="numeric"
+      />
+
+      <Text style={styles.label}>{t('createOrder.amount')}</Text>
+      <TextInput
+        style={styles.input}
+        placeholder={t('createOrder.amountPlaceholder')}
+        value={amount}
+        onChangeText={setAmount}
+        keyboardType="numeric"
+      />
+
+      <Text style={styles.label}>{t('createOrder.currency')}</Text>
+      <TextInput
+        style={styles.input}
+        placeholder={t('createOrder.currencyPlaceholder')}
+        value={currency}
+        onChangeText={setCurrency}
+        autoCapitalize="characters"
+      />
+
+      <TouchableOpacity
+        style={[styles.submitButton, loading && styles.disabled]}
+        onPress={handleCreateOrder}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.submitButtonText}>{t('createOrder.createButton')}</Text>
+        )}
       </TouchableOpacity>
+
       <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
-        <Text style={styles.cancelButtonText}>Annulla</Text>
+        <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
       </TouchableOpacity>
     </ScrollView>
   );

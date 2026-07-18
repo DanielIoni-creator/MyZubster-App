@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -8,20 +9,21 @@ export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useContext(AuthContext);
+  const { t } = useLanguage();
 
   const handleRegister = async () => {
     if (!email || !password || !name) {
-      Alert.alert('❌ Errore', 'Compila tutti i campi.');
+      Alert.alert('❌ ' + t('auth.registerError'), t('auth.fillAllFields'));
       return;
     }
 
     setLoading(true);
     try {
       await register(email, password, name);
-      Alert.alert('✅ Successo', 'Registrazione completata. Ora puoi accedere.');
+      Alert.alert('✅ ' + t('common.success'), t('auth.registerSuccess'));
       navigation.navigate('Login');
     } catch (error) {
-      Alert.alert('❌ Errore', error.message || 'Impossibile registrarsi. Riprova.');
+      Alert.alert('❌ ' + t('auth.registerError'), error.message || '');
     } finally {
       setLoading(false);
     }
@@ -29,18 +31,40 @@ export default function RegisterScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>📝 Crea account</Text>
+      <Text style={styles.title}>{t('auth.registerTitle')}</Text>
 
-      <TextInput style={styles.input} placeholder="Nome completo" value={name} onChangeText={setName} />
-      <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-      <TextInput style={styles.input} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
+      <TextInput
+        style={styles.input}
+        placeholder={t('auth.name')}
+        value={name}
+        onChangeText={setName}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder={t('auth.email')}
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder={t('auth.password')}
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
 
       <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.registerButtonText}>✅ Registrati</Text>}
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.registerButtonText}>{t('auth.registerButton')}</Text>
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.loginText}>Hai già un account? Accedi</Text>
+        <Text style={styles.loginText}>{t('auth.alreadyHaveAccount')}</Text>
       </TouchableOpacity>
     </View>
   );

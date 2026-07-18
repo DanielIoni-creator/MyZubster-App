@@ -1,37 +1,66 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import api from '../services/api';
 
 export default function DashboardScreen({ navigation }) {
   const { user, token } = useContext(AuthContext);
+  const { t } = useLanguage();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => { fetchOrders(); }, []);
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
   const fetchOrders = async () => {
     try {
-      const response = await api.get('/orders/my-orders', { headers: { Authorization: `Bearer ${token}` } });
+      const response = await api.get('/orders/my-orders', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setOrders(response.data || []);
-    } catch (error) { console.error('Errore recupero ordini:', error);
-    } finally { setLoading(false); setRefreshing(false); }
+    } catch (error) {
+      console.error('Errore recupero ordini:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const onRefresh = () => { setRefreshing(true); fetchOrders(); };
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchOrders();
+  };
+
+  const getStatusText = (status) => {
+    const statusMap = {
+      'pending': t('dashboard.status.pending'),
+      'completed': t('dashboard.status.completed'),
+      'cancelled': t('dashboard.status.cancelled'),
+    };
+    return statusMap[status] || status.toUpperCase();
+  };
 
   const renderOrder = ({ item }) => (
-    <TouchableOpacity style={styles.orderCard} onPress={() => navigation.navigate('Order', { orderId: item.id })}>
+    <TouchableOpacity
+      style={styles.orderCard}
+      onPress={() => navigation.navigate('Order', { orderId: item.id })}
+    >
       <View style={styles.orderHeader}>
-        <Text style={styles.orderId}>Ordine #{item.id}</Text>
+        <Text style={styles.orderId}>{t('dashboard.orderId', { id: item.id })}</Text>
         <View style={[styles.statusBadge, item.status === 'completed' ? styles.completed : styles.pending]}>
-          <Text style={styles.statusText}>{item.status?.toUpperCase() || 'PENDING'}</Text>
+          <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
         </View>
       </View>
-      <Text style={styles.orderAmount}>💰 {item.amount} {item.currency}</Text>
-      {item.moneroAddress && <Text style={styles.moneroAddress} numberOfLines={1}>📬 {item.moneroAddress}</Text>}
-      <Text style={styles.orderDate}>📅 {new Date(item.createdAt).toLocaleDateString()}</Text>
+      <Text style={styles.orderAmount}>{t('dashboard.amount', { amount: item.amount, currency: item.currency })}</Text>
+      {item.moneroAddress && (
+        <Text style={styles.moneroAddress} numberOfLines={1}>
+          {t('dashboard.moneroAddress', { address: item.moneroAddress })}
+        </Text>
+      )}
+      <Text style={styles.orderDate}>{t('dashboard.date', { date: new Date(item.createdAt).toLocaleDateString() })}</Text>
     </TouchableOpacity>
   );
 
@@ -39,7 +68,7 @@ export default function DashboardScreen({ navigation }) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#4CAF50" />
-        <Text style={{ marginTop: 10 }}>⏳ Caricamento...</Text>
+        <Text style={{ marginTop: 10 }}>{t('common.loading')}</Text>
       </View>
     );
   }
@@ -47,19 +76,32 @@ export default function DashboardScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.welcome}>👋 Ciao, {user?.name || 'Utente'}!</Text>
-        <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('CreateOrder')}>
-          <Text style={styles.createButtonText}>+ Nuovo</Text>
+        <Text style={styles.welcome}>{t('dashboard.welcome', { name: user?.name || 'Utente' })}</Text>
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => navigation.navigate('CreateOrder')}
+        >
+          <Text style={styles.createButtonText}>{t('dashboard.newOrder')}</Text>
         </TouchableOpacity>
       </View>
-      <Text style={styles.sectionTitle}>📋 I tuoi ordini</Text>
+
+      <Text style={styles.sectionTitle}>{t('dashboard.title')}</Text>
+      
       {orders.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>Nessun ordine ancora.</Text>
-          <Text style={styles.emptySubtext}>Crea il tuo primo ordine! 🚀</Text>
+          <Text style={styles.emptyText}>{t('dashboard.noOrders')}</Text>
+          <Text style={styles.emptySubtext}>{t('dashboard.noOrdersSub')}</Text>
         </View>
       ) : (
-        <FlatList data={orders} renderItem={renderOrder} keyExtractor={(item) => item.id.toString()} contentContainerStyle={styles.list} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />} />
+        <FlatList
+          data={orders}
+          renderItem={renderOrder}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        />
       )}
     </View>
   );
